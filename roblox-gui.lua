@@ -1,4 +1,4 @@
-﻿local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -11,9 +11,29 @@ local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 local lighting = game:GetService("Lighting")
 
+pcall(function()
+	local containers = {}
+	if type(gethui) == "function" then
+		local ok, hui = pcall(gethui)
+		if ok and hui then
+			table.insert(containers, hui)
+		end
+	end
+	table.insert(containers, player:FindFirstChild("PlayerGui"))
+	for _, container in ipairs(containers) do
+		if container then
+			local old = container:FindFirstChild("CustomGui")
+			if old then
+				old:Destroy()
+			end
+		end
+	end
+end)
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CustomGui"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 999
 local parentSet = false
 if type(gethui) == "function" then
 	local ok, hui = pcall(gethui)
@@ -28,16 +48,107 @@ end
 
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.new(0, 420, 0, 480)
-Main.Position = UDim2.new(0.5, -210, 0.5, -240)
+Main.Size = UDim2.new(0, 420, 0, 520)
+Main.Position = UDim2.new(0.5, -210, 0.5, -260)
 Main.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 Main.BorderSizePixel = 0
 Main.Active = true
+Main.ClipsDescendants = true
 Main.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = Main
+
+local ConstellationCanvas = Instance.new("Frame")
+ConstellationCanvas.Name = "Constellation"
+ConstellationCanvas.Size = UDim2.new(1, 0, 1, 0)
+ConstellationCanvas.BackgroundTransparency = 1
+ConstellationCanvas.BorderSizePixel = 0
+ConstellationCanvas.ClipsDescendants = true
+ConstellationCanvas.Parent = Main
+
+local constRng = Random.new()
+local constStars = {}
+local constDots = {}
+local constLines = {}
+local CONST_STAR_COUNT = 30
+local CONST_LINK_DIST = 95
+
+for i = 1, CONST_STAR_COUNT do
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.new(0, 3, 0, 3)
+	dot.BackgroundColor3 = Color3.fromRGB(130, 160, 255)
+	dot.BackgroundTransparency = 0.4
+	dot.BorderSizePixel = 0
+	dot.Parent = ConstellationCanvas
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(1, 0)
+	dotCorner.Parent = dot
+	constDots[i] = dot
+	constStars[i] = {
+		x = constRng:NextNumber(4, 413),
+		y = constRng:NextNumber(4, 513),
+		vx = constRng:NextNumber(-14, 14),
+		vy = constRng:NextNumber(-14, 14),
+		tw = constRng:NextNumber(0, math.pi * 2)
+	}
+end
+
+for i = 1, 64 do
+	local ln = Instance.new("Frame")
+	ln.BackgroundColor3 = Color3.fromRGB(90, 120, 230)
+	ln.BackgroundTransparency = 0.82
+	ln.BorderSizePixel = 0
+	ln.AnchorPoint = Vector2.new(0.5, 0.5)
+	ln.Visible = false
+	ln.Parent = ConstellationCanvas
+	constLines[i] = ln
+end
+
+local constClock = 0
+constConn = RunService.RenderStepped:Connect(function(dt)
+	constClock = constClock + dt
+	if constClock < 0.05 then return end
+	constClock = 0
+	if not ScreenGui.Parent then
+		constConn:Disconnect()
+		return
+	end
+	for i, s in ipairs(constStars) do
+		s.x = s.x + s.vx * 0.05
+		s.y = s.y + s.vy * 0.05
+		if s.x < 3 or s.x > 414 then s.vx = -s.vx end
+		if s.y < 3 or s.y > 514 then s.vy = -s.vy end
+		local dot = constDots[i]
+		dot.Position = UDim2.new(0, s.x, 0, s.y)
+		s.tw = s.tw + 0.09
+		dot.BackgroundTransparency = 0.45 + math.sin(s.tw) * 0.25
+	end
+	local used = 0
+	for i = 1, CONST_STAR_COUNT do
+		for j = i + 1, CONST_STAR_COUNT do
+			local a = constStars[i]
+			local b = constStars[j]
+			local dx = b.x - a.x
+			local dy = b.y - a.y
+			local d2 = dx * dx + dy * dy
+			if d2 < CONST_LINK_DIST * CONST_LINK_DIST and used < #constLines then
+				used = used + 1
+				local ln = constLines[used]
+				local dist = math.sqrt(d2)
+				ln.Visible = true
+				ln.Position = UDim2.new(0, (a.x + b.x) / 2, 0, (a.y + b.y) / 2)
+				ln.Size = UDim2.new(0, dist, 0, 1)
+				ln.Rotation = math.deg(math.atan2(dy, dx))
+				ln.BackgroundTransparency = 0.72 + (dist / CONST_LINK_DIST) * 0.22
+			end
+		end
+	end
+	for k = used + 1, #constLines do
+		constLines[k].Visible = false
+	end
+end)
 
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
@@ -238,7 +349,7 @@ end
 local function createTab(name, xPos)
 	local btn = Instance.new("TextButton")
 	btn.Name = name .. "_Tab"
-	btn.Size = UDim2.new(0, 56, 1, 0)
+	btn.Size = UDim2.new(0, 64, 1, 0)
 	btn.Position = UDim2.new(0, xPos, 0, 0)
 	btn.BackgroundColor3 = TAB_INACTIVE
 	btn.Text = name
@@ -316,7 +427,6 @@ local espPlayerConns = {}
 local espGlobalConns = {}
 
 local fbSaved = nil
-local nfSaved = nil
 
 local afkConn = nil
 
@@ -593,209 +703,6 @@ local function restoreCoolkidAttack()
 	end
 	coolkidEmitters = {}
 end
-
-local RARITY_NAMES = { "All", "Common", "Uncommon", "Rare", "Legendary", "Mythical", "Divine", "Prismatic" }
-local RARITY_INDEX = { Common = 1, Uncommon = 2, Rare = 3, Legendary = 4, Mythical = 5, Divine = 6, Prismatic = 7 }
-
-local GAG_SEED_RARITY = {
-	Carrot = 1,
-	Strawberry = 2,
-	Blueberry = 2,
-	["Orange Tulip"] = 2,
-	Tomato = 3,
-	Corn = 3,
-	Daffodil = 3,
-	Watermelon = 4,
-	Pumpkin = 4,
-	Apple = 4,
-	Bamboo = 4,
-	Coconut = 5,
-	Cactus = 5,
-	["Dragon Fruit"] = 5,
-	Mango = 5,
-	Grape = 6,
-	Mushroom = 6,
-	Pepper = 6,
-	Beanstalk = 6
-}
-
-local gagHarvestOn = false
-local gagSellOn = false
-local gagBuyOn = false
-local gagStealOn = false
-local gagHarvestMin = 1
-local gagSellMin = 1
-local gagBuyMin = 1
-local gagStealMin = 1
-
-local gagSellRemote = nil
-local gagBuyRemote = nil
-
-local function gagFindRemotes()
-	if gagSellRemote and gagBuyRemote then return end
-	local sellNames = { "sell_inventory", "sellinventory", "sell_all", "sellall", "sell_plant", "sellplants", "sell" }
-	local buyNames = { "buyseedstock", "buyseed", "buy_seeds", "buyseeds", "purchaserseed", "purchasingseed", "buy" }
-	local found = {}
-	pcall(function()
-		for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-			if obj:IsA("RemoteEvent") then
-				table.insert(found, obj)
-			end
-		end
-	end)
-	for _, want in ipairs(sellNames) do
-		for _, r in ipairs(found) do
-			if string.lower(r.Name) == want then
-				gagSellRemote = r
-				break
-			end
-		end
-		if gagSellRemote then break end
-	end
-	for _, want in ipairs(buyNames) do
-		for _, r in ipairs(found) do
-			if string.lower(r.Name) == want then
-				gagBuyRemote = r
-				break
-			end
-		end
-		if gagBuyRemote then break end
-	end
-end
-
-local function gagGetRarityValue(holder)
-	local attr = holder:GetAttribute("Rarity") or holder:GetAttribute("Variant")
-	if type(attr) == "string" and RARITY_INDEX[attr] then
-		return RARITY_INDEX[attr]
-	end
-	local valObj = holder:FindFirstChild("Variant") or holder:FindFirstChild("Rarity")
-	if valObj and (valObj:IsA("StringValue") or valObj:IsA("ObjectValue")) then
-		local v = valObj.Value
-		if type(v) == "string" and RARITY_INDEX[v] then
-			return RARITY_INDEX[v]
-		end
-		if type(v) == "userdata" and RARITY_INDEX[v.Name] then
-			return RARITY_INDEX[v.Name]
-		end
-	end
-	return nil
-end
-
-local function gagModelRarity(model)
-	if not model then return nil end
-	local ok, result = pcall(gagGetRarityValue, model)
-	if ok and result then return result end
-	local named = GAG_SEED_RARITY[model.Name]
-	if named then return named end
-	local parent = model.Parent
-	if parent then
-		local ok2, result2 = pcall(gagGetRarityValue, parent)
-		if ok2 and result2 then return result2 end
-		local named2 = GAG_SEED_RARITY[parent.Name]
-		if named2 then return named2 end
-	end
-	return nil
-end
-
-local GAG_HARVEST_WORDS = { "harvest", "collect", "pick" }
-local GAG_STEAL_WORDS = { "steal", "carry", "snatch", "rob", "take" }
-
-local function gagPromptMatches(prompt, words)
-	local text = string.lower(prompt.ActionText or "") .. " " .. string.lower(prompt.ObjectText or "")
-	for _, word in ipairs(words) do
-		if string.find(text, word, 1, true) then
-			return true
-		end
-	end
-	return false
-end
-
-local function gagFirePrompt(prompt)
-	if type(fireproximityprompt) == "function" then
-		pcall(fireproximityprompt, prompt)
-	else
-		pcall(function()
-			prompt:InputHoldBegin()
-			wait(0.15)
-			prompt:InputHoldEnd()
-		end)
-	end
-end
-
-local gagClock = 0
-local gagSellTick = 0
-gagLoopConn = RunService.Heartbeat:Connect(function(dt)
-	gagClock = gagClock + dt
-	if gagClock < 0.5 then return end
-	gagClock = 0
-	gagSellTick = gagSellTick + 1
-	if not ScreenGui.Parent then
-		gagLoopConn:Disconnect()
-		return
-	end
-
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-
-	if (gagHarvestOn or gagStealOn) and root then
-		local prompts = {}
-		pcall(function()
-			for _, obj in pairs(workspace:GetDescendants()) do
-				if obj:IsA("ProximityPrompt") and obj.Enabled then
-					table.insert(prompts, obj)
-				end
-			end
-		end)
-		for _, prompt in ipairs(prompts) do
-			local isHarvest = gagHarvestOn and gagPromptMatches(prompt, GAG_HARVEST_WORDS)
-			local isSteal = gagStealOn and gagPromptMatches(prompt, GAG_STEAL_WORDS)
-			if isHarvest or isSteal then
-				local holder = prompt.Parent
-				local pos = nil
-				pcall(function()
-					pos = holder:IsA("BasePart") and holder.Position or holder:FindFirstChildWhichIsA("BasePart")
-					if type(pos) ~= "Vector3" and pos then
-						pos = pos.Position
-					end
-				end)
-				local inRange = true
-				if pos then
-					inRange = (pos - root.Position).Magnitude < 30
-				end
-				if inRange then
-					local rarity = gagModelRarity(holder)
-					local minReq = isHarvest and gagHarvestMin or gagStealMin
-					if rarity == nil then
-						if minReq == 1 then
-							gagFirePrompt(prompt)
-						end
-					elseif rarity >= minReq - 1 then
-						gagFirePrompt(prompt)
-					end
-				end
-			end
-		end
-	end
-
-	if gagSellOn or gagBuyOn then
-		gagFindRemotes()
-	end
-	if gagSellOn and gagSellRemote and gagSellTick % 4 == 0 then
-		pcall(function()
-			gagSellRemote:FireServer()
-		end)
-	end
-	if gagBuyOn and gagBuyRemote and gagSellTick % 4 == 0 then
-		for seedName, seedRarity in pairs(GAG_SEED_RARITY) do
-			if seedRarity >= gagBuyMin - 1 then
-				pcall(function()
-					gagBuyRemote:FireServer(seedName)
-				end)
-			end
-		end
-	end
-end)
-
 local clickFlingOn = false
 
 local function flingCharacter(char)
@@ -860,6 +767,173 @@ local function boardPlay(idText)
 	boardSound.SoundId = "rbxassetid://" .. id
 	boardSound:Play()
 end
+
+local glitcherOn = false
+local glitcherConn = nil
+local glitchCharConn = nil
+local glitchSavedColors = {}
+
+local function glitchSnapshot(char)
+	if not char then return end
+	for _, p in pairs(char:GetDescendants()) do
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and glitchSavedColors[p] == nil then
+			glitchSavedColors[p] = p.Color
+		end
+	end
+end
+
+local function glitcherSet(state)
+	glitcherOn = state
+	if state then
+		glitchSnapshot(player.Character)
+		glitchCharConn = player.CharacterAdded:Connect(function(c)
+			wait(0.5)
+			if glitcherOn then
+				glitchSnapshot(c)
+			end
+		end)
+		glitcherConn = RunService.RenderStepped:Connect(function()
+			local ch = player.Character
+			if not ch then return end
+			for _, m in pairs(ch:GetDescendants()) do
+				if m:IsA("Motor6D") then
+					m.Transform = CFrame.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * CFrame.Angles(math.rad(math.random(-180, 180)), math.rad(math.random(-180, 180)), math.rad(math.random(-180, 180)))
+				elseif m:IsA("BasePart") and m.Name ~= "HumanoidRootPart" then
+					if math.random() < 0.3 then
+						m.Color = Color3.fromHSV(math.random(), 1, 1)
+					end
+				end
+			end
+		end)
+	else
+		if glitcherConn then
+			glitcherConn:Disconnect()
+			glitcherConn = nil
+		end
+		if glitchCharConn then
+			glitchCharConn:Disconnect()
+			glitchCharConn = nil
+		end
+		for part, color in pairs(glitchSavedColors) do
+			pcall(function()
+				if part.Parent then
+					part.Color = color
+				end
+			end)
+		end
+		glitchSavedColors = {}
+	end
+end
+
+local morphClone = nil
+local morphHiddenParts = {}
+
+local function morphRestoreSelf()
+	for part in pairs(morphHiddenParts) do
+		pcall(function()
+			if part.Parent then
+				part.LocalTransparencyModifier = 0
+			end
+		end)
+	end
+	morphHiddenParts = {}
+end
+
+function undoMorph()
+	if morphClone then
+		pcall(function()
+			morphClone:Destroy()
+		end)
+		morphClone = nil
+	end
+	morphRestoreSelf()
+end
+
+function doMorph(nameText)
+	undoMorph()
+	local query = string.lower(string.gsub(nameText, "^%s*(.-)%s*$", "%1"))
+	if query == "" then return "Type a username first" end
+	local target = nil
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if string.lower(plr.Name) == query or string.lower(plr.DisplayName) == query then
+			target = plr
+			break
+		end
+	end
+	if not target then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if string.sub(string.lower(plr.Name), 1, #query) == query or string.sub(string.lower(plr.DisplayName), 1, #query) == query then
+				target = plr
+				break
+			end
+		end
+	end
+	if not target then return "No player: " .. nameText end
+	local myChar = player.Character
+	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return "You have no character yet" end
+	local tChar = target.Character
+	local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+	if not tHRP then return target.Name .. " has no character yet" end
+	local offsets = {}
+	pcall(function()
+		tChar.Archivable = true
+	end)
+	for _, p in ipairs(tChar:GetDescendants()) do
+		if p:IsA("BasePart") then
+			offsets[p.Name] = tHRP.CFrame:ToObjectSpace(p.CFrame)
+		end
+	end
+	local ok, clone = pcall(function()
+		return tChar:Clone()
+	end)
+	if not ok or not clone then return "Could not clone their character" end
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("Humanoid") or d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	pcall(function()
+		clone.Name = target.Name .. "_Morph"
+	end)
+	clone.Parent = workspace
+	for _, p in ipairs(clone:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.CanCollide = false
+			p.Massless = true
+			p.Anchored = false
+			pcall(function()
+				p.CFrame = myHRP.CFrame * offsets[p.Name]
+			end)
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = myHRP
+			w.Part1 = p
+			w.Parent = p
+		end
+	end
+	morphClone = clone
+	for _, p in ipairs(myChar:GetDescendants()) do
+		if p:IsA("BasePart") or p:IsA("Decal") then
+			pcall(function()
+				p.LocalTransparencyModifier = 1
+				morphHiddenParts[p] = true
+			end)
+		elseif p:IsA("Accessory") and p:FindFirstChild("Handle") then
+			pcall(function()
+				p.Handle.LocalTransparencyModifier = 1
+				morphHiddenParts[p.Handle] = true
+			end)
+		end
+	end
+	return nil
+end
+
+player.CharacterAdded:Connect(function()
+	if morphClone then
+		morphClone = nil
+		morphHiddenParts = {}
+	end
+end)
 
 local FLOOR_KEYWORDS = { "baseplate", "floor", "ground", "spawn", "road", "sidewalk", "pavement", "concrete" }
 
@@ -1108,6 +1182,339 @@ local function espRemove(plr)
 	end
 end
 
+local function getRootJoint(char)
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then return nil end
+	if hum.RigType == Enum.HumanoidRigType.R6 then
+		local torso = char:FindFirstChild("Torso")
+		return torso and torso:FindFirstChild("Root Joint")
+	end
+	local lt = char:FindFirstChild("LowerTorso")
+	return lt and lt:FindFirstChild("Root")
+end
+
+local spinbotOn = false
+local spinbotConn = nil
+local spinbotJoint = nil
+local spinbotSavedC0 = nil
+local spinAngle = 0
+
+local function spinbotSet(on)
+	spinbotOn = on
+	if on then
+		spinAngle = 0
+		spinbotJoint = nil
+		spinbotSavedC0 = nil
+		spinbotConn = RunService.RenderStepped:Connect(function(dt)
+			local char = player.Character
+			local joint = char and getRootJoint(char)
+			if not joint then return end
+			if joint ~= spinbotJoint then
+				spinbotJoint = joint
+				spinbotSavedC0 = joint.C0
+			end
+			spinAngle = spinAngle + dt * 16
+			joint.C0 = spinbotSavedC0 * CFrame.Angles(0, spinAngle, 0)
+		end)
+	else
+		if spinbotConn then
+			spinbotConn:Disconnect()
+			spinbotConn = nil
+		end
+		if spinbotJoint and spinbotJoint.Parent and spinbotSavedC0 then
+			pcall(function()
+				spinbotJoint.C0 = spinbotSavedC0
+			end)
+		end
+		spinbotJoint = nil
+		spinbotSavedC0 = nil
+	end
+end
+
+local antiflingOn = false
+local antiflingConn = nil
+
+local function antiflingSet(on)
+	antiflingOn = on
+	if on then
+		antiflingConn = RunService.RenderStepped:Connect(function()
+			if flying then return end
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if not root then return end
+			local v = root.AssemblyLinearVelocity
+			if v.Magnitude > 130 then
+				local vy = v.Y
+				if vy > 40 then
+					vy = 10
+				end
+				root.AssemblyLinearVelocity = Vector3.new(v.X * 0.05, vy, v.Z * 0.05)
+				root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			end
+		end)
+	else
+		if antiflingConn then
+			antiflingConn:Disconnect()
+			antiflingConn = nil
+		end
+	end
+end
+
+local MAT_NAMES = { "Neon", "ForceField", "Glass" }
+local matIndex = 0
+local matSaved = {}
+
+local function snapshotMats(char)
+	if not char then return end
+	for _, p in pairs(char:GetDescendants()) do
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and matSaved[p] == nil then
+			matSaved[p] = p.Material
+		end
+	end
+end
+
+local function materialCycle()
+	matIndex = (matIndex + 1) % (#MAT_NAMES + 1)
+	local char = player.Character
+	if not char then return "" end
+	if matIndex == 0 then
+		for part, mat in pairs(matSaved) do
+			pcall(function()
+				if part.Parent then
+					part.Material = mat
+				end
+			end)
+		end
+		matSaved = {}
+	else
+		snapshotMats(char)
+		local target = Enum.Material[MAT_NAMES[matIndex]]
+		for _, p in pairs(char:GetDescendants()) do
+			if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+				pcall(function()
+					p.Material = target
+				end)
+			end
+		end
+	end
+	if matIndex == 0 then
+		return "Mat: Normal"
+	end
+	return "Mat: " .. MAT_NAMES[matIndex]
+end
+
+local tagStore = {}
+local tagConn = nil
+local tagClock = 0
+
+local function tagRemove(plr)
+	local t = tagStore[plr]
+	if t then
+		pcall(function()
+			t.bb:Destroy()
+		end)
+		tagStore[plr] = nil
+	end
+end
+
+local function tagEnsure(plr)
+	local c = plr.Character
+	local head = c and (c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart"))
+	if not head then return end
+	local t = tagStore[plr]
+	if t and t.bb.Parent ~= head then
+		t.bb.Parent = head
+		return
+	end
+	if t then return end
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 140, 0, 52)
+	bb.StudsOffset = Vector3.new(0, 2.4, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 400
+	bb.Adornee = head
+	bb.Parent = head
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0, 18)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = plr.Name
+	nameLabel.TextColor3 = Color3.fromRGB(235, 235, 245)
+	nameLabel.TextStrokeTransparency = 0.4
+	nameLabel.TextSize = 12
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = bb
+	local barBg = Instance.new("Frame")
+	barBg.Size = UDim2.new(1, -20, 0, 5)
+	barBg.Position = UDim2.new(0, 10, 0, 21)
+	barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+	barBg.BorderSizePixel = 0
+	barBg.Parent = bb
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.new(1, 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+	fill.BorderSizePixel = 0
+	fill.Parent = barBg
+	local distLabel = Instance.new("TextLabel")
+	distLabel.Size = UDim2.new(1, 0, 0, 14)
+	distLabel.Position = UDim2.new(0, 0, 0, 28)
+	distLabel.BackgroundTransparency = 1
+	distLabel.Text = ""
+	distLabel.TextColor3 = Color3.fromRGB(170, 170, 185)
+	distLabel.TextStrokeTransparency = 0.5
+	distLabel.TextSize = 11
+	distLabel.Font = Enum.Font.Gotham
+	distLabel.Parent = bb
+	tagStore[plr] = { bb = bb, fill = fill, dist = distLabel }
+end
+
+local function nametagsSet(on)
+	if on then
+		tagConn = RunService.Heartbeat:Connect(function(dt)
+			tagClock = tagClock + dt
+			if tagClock < 0.25 then return end
+			tagClock = 0
+			local cam = workspace.CurrentCamera
+			if not cam then return end
+			for _, plr in ipairs(Players:GetPlayers()) do
+				if plr ~= player then
+					tagEnsure(plr)
+					local t = tagStore[plr]
+					if t then
+						local c = plr.Character
+						local hum = c and c:FindFirstChildOfClass("Humanoid")
+						local hrp = c and c:FindFirstChild("HumanoidRootPart")
+						if hum and hrp and hum.Health > 0 then
+							t.fill.Size = UDim2.new(math.max(hum.Health / math.max(hum.MaxHealth, 1), 0), 0, 1, 0)
+							local hf = math.max(math.min(hum.Health / math.max(hum.MaxHealth, 1), 1), 0)
+							t.fill.BackgroundColor3 = Color3.fromRGB(math.floor(225 * (1 - hf)), math.floor(215 * hf), 70)
+							t.dist.Text = tostring(math.floor((hrp.Position - cam.CFrame.Position).Magnitude)) .. " st"
+						else
+							t.dist.Text = ""
+							t.fill.Size = UDim2.new(0, 0, 1, 0)
+						end
+					end
+				end
+			end
+		end)
+	else
+		if tagConn then
+			tagConn:Disconnect()
+			tagConn = nil
+		end
+		for _, plr in ipairs(Players:GetPlayers()) do
+			tagRemove(plr)
+		end
+	end
+end
+
+local tracerLines = {}
+local tracerConns = {}
+local tracerRenderConn = nil
+
+local function tracerAdd(plr)
+	if tracerLines[plr] then return end
+	local ok, line = pcall(function()
+		local d = Drawing.new("Line")
+		d.Thickness = 1.5
+		d.Color = Color3.fromRGB(255, 90, 90)
+		d.Transparency = 0.85
+		d.Visible = false
+		return d
+	end)
+	if ok and line then
+		tracerLines[plr] = line
+	end
+end
+
+local function tracerRemove(plr)
+	local line = tracerLines[plr]
+	if line then
+		pcall(function()
+			line:Remove()
+		end)
+		tracerLines[plr] = nil
+	end
+end
+
+local function tracersSet(on)
+	if on then
+		if not Drawing or not Drawing.new then
+			return false
+		end
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= player then
+				tracerAdd(plr)
+			end
+		end
+		table.insert(tracerConns, Players.PlayerAdded:Connect(tracerAdd))
+		table.insert(tracerConns, Players.PlayerRemoving:Connect(tracerRemove))
+		tracerRenderConn = RunService.RenderStepped:Connect(function()
+			local cam = workspace.CurrentCamera
+			if not cam then return end
+			local vp = cam.ViewportSize
+			for plr, line in pairs(tracerLines) do
+				local c = plr.Character
+				local hrp = c and c:FindFirstChild("HumanoidRootPart")
+				local hum = c and c:FindFirstChildOfClass("Humanoid")
+				local pos = hrp and cam:WorldToViewportPoint(hrp.Position)
+				if pos and hum and hum.Health > 0 and pos.Z > 0 then
+					line.From = Vector2.new(vp.X / 2, vp.Y)
+					line.To = Vector2.new(pos.X, pos.Y)
+					line.Visible = true
+				else
+					line.Visible = false
+				end
+			end
+		end)
+		return true
+	else
+		if tracerRenderConn then
+			tracerRenderConn:Disconnect()
+			tracerRenderConn = nil
+		end
+		for _, c in ipairs(tracerConns) do
+			c:Disconnect()
+		end
+		tracerConns = {}
+		for _, plr in ipairs(Players:GetPlayers()) do
+			tracerRemove(plr)
+		end
+		return true
+	end
+end
+
+local chatSpyConns = {}
+
+local function setChatSpy(on)
+	chatWindow.Visible = on
+	if on then
+		local function hookPlr(plr)
+			table.insert(chatSpyConns, plr.Chatted:Connect(function(msg)
+				addChat("[SPY] " .. plr.Name, msg)
+			end))
+		end
+		for _, plr in ipairs(Players:GetPlayers()) do
+			hookPlr(plr)
+		end
+		table.insert(chatSpyConns, Players.PlayerAdded:Connect(hookPlr))
+		pcall(function()
+			table.insert(chatSpyConns, TextChatService.MessageReceived:Connect(function(msg)
+				local src = msg.TextSource
+				local chan = ""
+				pcall(function()
+					chan = "[" .. msg.TextChannel.Name .. "] "
+				end)
+				addChat("[SPY] " .. (src and src.Name or "System"), chan .. msg.Text)
+			end))
+		end)
+	else
+		for _, c in ipairs(chatSpyConns) do
+			c:Disconnect()
+		end
+		chatSpyConns = {}
+	end
+end
+
 local function setESP(on)
 	espEnabled = on
 	if on then
@@ -1155,20 +1562,6 @@ local function setFullbright(on)
 			lighting.Ambient = fbSaved.Ambient
 			lighting.OutdoorAmbient = fbSaved.OutdoorAmbient
 			fbSaved = nil
-		end
-	end
-end
-
-local function setNoFog(on)
-	if on then
-		nfSaved = { FogEnd = lighting.FogEnd, FogStart = lighting.FogStart }
-		lighting.FogEnd = 100000
-		lighting.FogStart = 0
-	else
-		if nfSaved then
-			lighting.FogEnd = nfSaved.FogEnd
-			lighting.FogStart = nfSaved.FogStart
-			nfSaved = nil
 		end
 	end
 end
@@ -1374,12 +1767,11 @@ local function createLabel(parent, text, yPos)
 end
 
 local funPage = createTab("Fun", 0)
-local movePage = createTab("Move", 58)
-local avatarPage = createTab("Avatar", 116)
-local visPage = createTab("Vis", 174)
-local utilPage = createTab("Util", 232)
-local partsPage = createTab("Parts", 290)
-local gag2Page = createTab("Gag 2", 348)
+local movePage = createTab("Move", 68)
+local avatarPage = createTab("Avatar", 136)
+local visPage = createTab("Vis", 204)
+local utilPage = createTab("Util", 272)
+local partsPage = createTab("Parts", 340)
 
 createToggle(funPage, "Orbit All", 14, 6, function(state)
 	if state then
@@ -1624,13 +2016,17 @@ end)
 
 createButton(funPage, "Load Xester", 14, 344, function()
 	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Tescalus/Pendulum-Hubs-Source/main/ReanimMain.lua", true))()
+	end)
+	wait(3)
+	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/TheRareOcelot/roblox-fe-scripts/main/xester", true))()
 	end)
 end)
 
 createButton(funPage, "Load Lolita Glitcher", 218, 344, function()
 	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Jskfhggjxu/My-Script/refs/heads/main/fe-Lolita-glitcher.lua", true))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Jskfhggjxu/My-Script/refs/heads/main/fe-Lolita-glitcher-Load.lua", true))()
 	end)
 end)
 
@@ -1752,6 +2148,14 @@ createSlider(movePage, "Jump Power", 192, 20, 300, 50, 0, function(value)
 	applySpeedSettings()
 end)
 
+createToggle(movePage, "Spinbot", 14, 228, function(state)
+	spinbotSet(state)
+end)
+
+createToggle(movePage, "Anti-Fling", 214, 228, function(state)
+	antiflingSet(state)
+end)
+
 createButton(avatarPage, "Random Pants", 14, 6, function()
 	local char = player.Character
 	if not char then return end
@@ -1800,6 +2204,83 @@ createButton(avatarPage, "Skin Color", 214, 44, function()
 	end
 end)
 
+local avatarScanBox = Instance.new("TextBox")
+avatarScanBox.Size = UDim2.new(0, 392, 0, 200)
+avatarScanBox.Position = UDim2.new(0, 14, 0, 122)
+avatarScanBox.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+avatarScanBox.Text = ""
+avatarScanBox.PlaceholderText = "Avatar remote scan results..."
+avatarScanBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+avatarScanBox.TextColor3 = Color3.fromRGB(160, 255, 170)
+avatarScanBox.TextSize = 12
+avatarScanBox.Font = Enum.Font.Code
+avatarScanBox.TextMultiLine = true
+avatarScanBox.TextWrapped = true
+avatarScanBox.ClearTextOnFocus = false
+avatarScanBox.TextEditable = false
+avatarScanBox.Parent = avatarPage
+
+local avatarScanCorner = Instance.new("UICorner")
+avatarScanCorner.CornerRadius = UDim.new(0, 8)
+avatarScanCorner.Parent = avatarScanBox
+
+createButton(avatarPage, "Scan Avatar Remotes", 14, 82, function()
+	local lines = {}
+	local keywords = { "color", "cloth", "shirt", "pant", "avatar", "skin", "body", "appearance", "outfit", "customiz", "dress", "wear", "accessor" }
+	pcall(function()
+		for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+			if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+				local n = string.lower(obj.Name)
+				for _, word in ipairs(keywords) do
+					if string.find(n, word, 1, true) then
+						table.insert(lines, obj.ClassName .. " " .. obj:GetFullName())
+						break
+					end
+				end
+			end
+		end
+	end)
+	table.insert(lines, "-- scan done --")
+	avatarScanBox.Text = table.concat(lines, "\n")
+end)
+
+local morphBox = Instance.new("TextBox")
+morphBox.Size = UDim2.new(0, 192, 0, 28)
+morphBox.Position = UDim2.new(0, 14, 0, 330)
+morphBox.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+morphBox.PlaceholderText = "Username..."
+morphBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+morphBox.Text = ""
+morphBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+morphBox.TextSize = 13
+morphBox.Font = Enum.Font.Gotham
+morphBox.ClearTextOnFocus = false
+morphBox.TextXAlignment = Enum.TextXAlignment.Left
+morphBox.Parent = avatarPage
+
+local morphBoxCorner = Instance.new("UICorner")
+morphBoxCorner.CornerRadius = UDim.new(0, 8)
+morphBoxCorner.Parent = morphBox
+
+local morphBoxPad = Instance.new("UIPadding")
+morphBoxPad.PaddingLeft = UDim.new(0, 8)
+morphBoxPad.Parent = morphBox
+
+createButton(avatarPage, "Morph", 218, 330, function()
+	local err = doMorph(morphBox.Text)
+	if err then
+		avatarScanBox.Text = err
+	end
+end)
+
+createButton(avatarPage, "Unmorph", 14, 368, function()
+	undoMorph()
+end)
+
+local matBtn = createButton(avatarPage, "Mat: Normal", 218, 368, function()
+	matBtn.Text = materialCycle()
+end)
+
 createToggle(visPage, "Player ESP", 14, 6, function(state)
 	setESP(state)
 end)
@@ -1808,18 +2289,14 @@ createToggle(visPage, "Fullbright", 214, 6, function(state)
 	setFullbright(state)
 end)
 
-createToggle(visPage, "No Fog", 14, 44, function(state)
-	setNoFog(state)
-end)
-
-createSlider(visPage, "FOV", 82, 30, 120, 70, 0, function(value)
+createSlider(visPage, "FOV", 44, 30, 120, 70, 0, function(value)
 	local cam = workspace.CurrentCamera
 	if cam then
 		cam.FieldOfView = value
 	end
 end)
 
-createToggle(visPage, "X-Ray", 14, 124, function(state)
+createToggle(visPage, "X-Ray", 14, 86, function(state)
 	if state then
 		applyXray()
 		xrayConn = RunService.Heartbeat:Connect(function()
@@ -1838,7 +2315,7 @@ createToggle(visPage, "X-Ray", 14, 124, function(state)
 	end
 end)
 
-createToggle(visPage, "FPS Boost", 214, 124, function(state)
+createToggle(visPage, "FPS Boost", 214, 86, function(state)
 	if state then
 		boostShadowSaved = lighting.GlobalShadows
 		lighting.GlobalShadows = false
@@ -1863,12 +2340,12 @@ createToggle(visPage, "FPS Boost", 214, 124, function(state)
 	end
 end)
 
-createToggle(visPage, "Crosshair", 14, 162, function(state)
+createToggle(visPage, "Crosshair", 14, 124, function(state)
 	crosshairOn = state
 	crosshair.Visible = state
 end)
 
-createToggle(visPage, "FPS / Ping", 214, 162, function(state)
+createToggle(visPage, "FPS / Ping", 214, 124, function(state)
 	statsOn = state
 	statsLabel.Visible = state
 	if state then
@@ -1890,6 +2367,18 @@ createToggle(visPage, "FPS / Ping", 214, 162, function(state)
 			statsConn:Disconnect()
 			statsConn = nil
 		end
+	end
+end)
+
+createToggle(visPage, "Name Tags+", 14, 162, function(state)
+	nametagsSet(state)
+end)
+
+local tracerBtn = createToggle(visPage, "Tracers", 214, 162, function(state)
+	local ok = tracersSet(state)
+	if state and not ok then
+		tracerBtn.Text = "Tracers: N/A"
+		tracerBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 	end
 end)
 
@@ -2035,6 +2524,10 @@ createButton(utilPage, "Stop Sound", 218, 270, function()
 	boardSound:Stop()
 end)
 
+createToggle(utilPage, "Chat Spy", 218, 308, function(state)
+	setChatSpy(state)
+end)
+
 local wpNameBox = Instance.new("TextBox")
 wpNameBox.Size = UDim2.new(0, 160, 0, 28)
 wpNameBox.Position = UDim2.new(0, 14, 0, 146)
@@ -2111,113 +2604,8 @@ createButton(partsPage, "Restore Map", 218, 190, function()
 	restoreCoolkidAttack()
 end)
 
-local gagHarvestBtn = createButton(gag2Page, "Harvest Rarity: All", 218, 6, function()
-	gagHarvestMin = gagHarvestMin % #RARITY_NAMES + 1
-	gagHarvestBtn.Text = "Harvest Rarity: " .. RARITY_NAMES[gagHarvestMin]
-end)
-
-local gagSellBtn = createButton(gag2Page, "Sell Rarity: All", 218, 44, function()
-	gagSellMin = gagSellMin % #RARITY_NAMES + 1
-	gagSellBtn.Text = "Sell Rarity: " .. RARITY_NAMES[gagSellMin]
-end)
-
-local gagBuyBtn = createButton(gag2Page, "Buy Rarity: All", 218, 82, function()
-	gagBuyMin = gagBuyMin % #RARITY_NAMES + 1
-	gagBuyBtn.Text = "Buy Rarity: " .. RARITY_NAMES[gagBuyMin]
-end)
-
-local gagStealBtn = createButton(gag2Page, "Steal Rarity: All", 218, 120, function()
-	gagStealMin = gagStealMin % #RARITY_NAMES + 1
-	gagStealBtn.Text = "Steal Rarity: " .. RARITY_NAMES[gagStealMin]
-end)
-
-createToggle(gag2Page, "Auto Harvest", 14, 6, function(state)
-	gagHarvestOn = state
-end)
-
-createToggle(gag2Page, "Auto Sell All", 14, 44, function(state)
-	gagSellOn = state
-end)
-
-createToggle(gag2Page, "Auto Buy Seeds", 14, 82, function(state)
-	gagBuyOn = state
-end)
-
-createToggle(gag2Page, "Auto Steal", 14, 120, function(state)
-	gagStealOn = state
-end)
-
-createLabel(gag2Page, "Rarity buttons set the minimum tier.", 162)
-createLabel(gag2Page, "Unknown plants only run on All.", 184)
-
-local gagScanBox = Instance.new("TextBox")
-gagScanBox.Size = UDim2.new(0, 392, 0, 150)
-gagScanBox.Position = UDim2.new(0, 14, 0, 236)
-gagScanBox.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-gagScanBox.Text = ""
-gagScanBox.PlaceholderText = "Scan results appear here..."
-gagScanBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
-gagScanBox.TextColor3 = Color3.fromRGB(160, 255, 170)
-gagScanBox.TextSize = 12
-gagScanBox.Font = Enum.Font.Code
-gagScanBox.TextMultiLine = true
-gagScanBox.TextWrapped = true
-gagScanBox.ClearTextOnFocus = false
-gagScanBox.TextEditable = false
-gagScanBox.Parent = gag2Page
-
-local gagScanCorner = Instance.new("UICorner")
-gagScanCorner.CornerRadius = UDim.new(0, 8)
-gagScanCorner.Parent = gagScanBox
-
-createButton(gag2Page, "Scan Game", 14, 210, function()
-	local lines = {}
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	table.insert(lines, "-- Prompts/ClickDetectors near you --")
-	if not root then
-		table.insert(lines, "no character!")
-	end
-	local count = 0
-	pcall(function()
-		for _, obj in pairs(workspace:GetDescendants()) do
-			local isPrompt = obj:IsA("ProximityPrompt")
-			local isClick = obj:IsA("ClickDetector")
-			if isPrompt or isClick then
-				local dist = nil
-				pcall(function()
-					local h = obj.Parent
-					local part = h:IsA("BasePart") and h or h:FindFirstChildWhichIsA("BasePart")
-					if part then
-						dist = (part.Position - root.Position).Magnitude
-					end
-				end)
-				if dist and dist < 150 then
-					count = count + 1
-					if count <= 25 then
-						if isPrompt then
-							table.insert(lines, "PROMPT " .. obj.Parent.Name .. " | action=" .. tostring(obj.ActionText) .. " | object=" .. tostring(obj.ObjectText))
-						else
-							table.insert(lines, "CLICK " .. obj.Parent.Name)
-						end
-					end
-				end
-			end
-		end
-	end)
-	table.insert(lines, "total near: " .. tostring(count))
-	table.insert(lines, "-- Matching remotes --")
-	pcall(function()
-		for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-			if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-				local n = string.lower(obj.Name)
-				if string.find(n, "sell", 1, true) or string.find(n, "buy", 1, true) or string.find(n, "harvest", 1, true) or string.find(n, "plant", 1, true) or string.find(n, "seed", 1, true) or string.find(n, "farm", 1, true) or string.find(n, "steal", 1, true) or string.find(n, "carry", 1, true) or string.find(n, "collect", 1, true) then
-					table.insert(lines, obj.ClassName .. " " .. obj:GetFullName())
-				end
-			end
-		end
-	end)
-	gagScanBox.Text = table.concat(lines, "\n")
+createToggle(partsPage, "Glitcher", 14, 228, function(state)
+	glitcherSet(state)
 end)
 
 selectTab("Fun")
