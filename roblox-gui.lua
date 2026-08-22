@@ -390,56 +390,56 @@ local orbitList = {}
 local orbitConnection = nil
 local clickOrbitEnabled = false
 
-local flying = false
-local flySpeed = 60
-local flyConn = nil
+flying = false
+flySpeed = 60
+flyConn = nil
 
-local swimming = false
-local swimConn = nil
+swimming = false
+swimConn = nil
 
-local noclipSaved = setmetatable({}, { __mode = "k" })
-local noclipConn = nil
-local noclipFrames = 0
+noclipSaved = setmetatable({}, { __mode = "k" })
+noclipConn = nil
+noclipFrames = 0
 
-local walkSpeedValue = 16
-local jumpPowerValue = 50
+walkSpeedValue = 16
+jumpPowerValue = 50
 
-local infJumpConn = nil
-local clickTPOn = false
+infJumpConn = nil
+clickTPOn = false
 
-local gravGunOn = false
-local grabbedPart = nil
-local gravGunConn = nil
+gravGunOn = false
+grabbedPart = nil
+gravGunConn = nil
 
-local flingOn = false
+flingOn = false
 
-local spinOn = false
-local spinConn = nil
+spinOn = false
+spinConn = nil
 
-local rainOn = false
-local rainConn = nil
-local rainParts = {}
-local rainAcc = 0
+rainOn = false
+rainConn = nil
+rainParts = {}
+rainAcc = 0
 
-local espEnabled = false
-local espObjects = {}
-local espPlayerConns = {}
-local espGlobalConns = {}
+espEnabled = false
+espObjects = {}
+espPlayerConns = {}
+espGlobalConns = {}
 
-local fbSaved = nil
+fbSaved = nil
 
-local afkConn = nil
+afkConn = nil
 
-local magnetConn = nil
-local bombOn = false
-local ghostConn = nil
-local ghostList = {}
-local ghostAcc = 0
-local ghostLastPos = nil
-local rainbowConn = nil
-local rideOn = false
-local rideTarget = nil
-local rideConn = nil
+magnetConn = nil
+bombOn = false
+ghostConn = nil
+ghostList = {}
+ghostAcc = 0
+ghostLastPos = nil
+rainbowConn = nil
+rideOn = false
+rideTarget = nil
+rideConn = nil
 local xraySaved = setmetatable({}, { __mode = "k" })
 local xrayConn = nil
 local xrayFrames = 0
