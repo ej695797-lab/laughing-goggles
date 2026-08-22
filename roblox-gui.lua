@@ -1536,6 +1536,22 @@ local function setESP(on)
 	end
 end
 
+local noFogSaved = nil
+
+local function setNoFog(on)
+	if on then
+		noFogSaved = { FogEnd = lighting.FogEnd, FogStart = lighting.FogStart }
+		lighting.FogEnd = 100000
+		lighting.FogStart = 0
+	else
+		if noFogSaved then
+			lighting.FogEnd = noFogSaved.FogEnd
+			lighting.FogStart = noFogSaved.FogStart
+			noFogSaved = nil
+		end
+	end
+end
+
 local function setFullbright(on)
 	if on then
 		fbSaved = {
@@ -2289,14 +2305,18 @@ createToggle(visPage, "Fullbright", 214, 6, function(state)
 	setFullbright(state)
 end)
 
-createSlider(visPage, "FOV", 44, 30, 120, 70, 0, function(value)
+createToggle(visPage, "No Fog", 14, 44, function(state)
+	setNoFog(state)
+end)
+
+createSlider(visPage, "FOV", 82, 30, 120, 70, 0, function(value)
 	local cam = workspace.CurrentCamera
 	if cam then
 		cam.FieldOfView = value
 	end
 end)
 
-createToggle(visPage, "X-Ray", 14, 86, function(state)
+createToggle(visPage, "X-Ray", 14, 124, function(state)
 	if state then
 		applyXray()
 		xrayConn = RunService.Heartbeat:Connect(function()
@@ -2315,7 +2335,7 @@ createToggle(visPage, "X-Ray", 14, 86, function(state)
 	end
 end)
 
-createToggle(visPage, "FPS Boost", 214, 86, function(state)
+createToggle(visPage, "FPS Boost", 214, 44, function(state)
 	if state then
 		boostShadowSaved = lighting.GlobalShadows
 		lighting.GlobalShadows = false
@@ -2345,7 +2365,7 @@ createToggle(visPage, "Crosshair", 14, 124, function(state)
 	crosshair.Visible = state
 end)
 
-createToggle(visPage, "FPS / Ping", 214, 124, function(state)
+createToggle(visPage, "FPS / Ping", 214, 162, function(state)
 	statsOn = state
 	statsLabel.Visible = state
 	if state then
@@ -2374,7 +2394,7 @@ createToggle(visPage, "Name Tags+", 14, 162, function(state)
 	nametagsSet(state)
 end)
 
-local tracerBtn = createToggle(visPage, "Tracers", 214, 162, function(state)
+local tracerBtn = createToggle(visPage, "Tracers", 214, 200, function(state)
 	local ok = tracersSet(state)
 	if state and not ok then
 		tracerBtn.Text = "Tracers: N/A"
